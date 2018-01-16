@@ -3,65 +3,63 @@ Created on 8 déc. 2017
 
 @author: anase
 '''
-import json
-from pprint import pprint
-import requests
+
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import cycler
-
-pd.set_option('display.width', 500)
-pd.set_option('display.max_columns', 30)
-
-# set some nicer defaults for matplotlib
-from matplotlib import rcParams
-
-# these colors come from colorbrewer2.org. Each is an RGB triplet
-dark2_colors = [(0.10588235294117647, 0.6196078431372549, 0.4666666666666667),
-                (0.8509803921568627, 0.37254901960784315, 0.00784313725490196),
-                (0.4588235294117647, 0.4392156862745098, 0.7019607843137254),
-                (0.9058823529411765, 0.1607843137254902, 0.5411764705882353),
-                (0.4, 0.6509803921568628, 0.11764705882352941),
-                (0.9019607843137255, 0.6705882352941176, 0.00784313725490196),
-                (0.6509803921568628, 0.4627450980392157, 0.11372549019607843),
-                (0.4, 0.4, 0.4)]
-
-rcParams['figure.figsize'] = (10, 6)
-rcParams['figure.dpi'] = 150
-rcParams['axes.prop_cycle'] = cycler("color", dark2_colors)
-rcParams['lines.linewidth'] = 2
-rcParams['axes.grid'] = False
-rcParams['axes.facecolor'] = 'white'
-rcParams['font.size'] = 14
-rcParams['patch.edgecolor'] = 'none'
-
-
-def remove_border(axes=None, top=False, right=False, left=True, bottom=True):
-    """
-    Minimize chartjunk by stripping out unnecessary plot borders and axis ticks
-    
-    The top/right/left/bottom keywords toggle whether the corresponding plot border is drawn
-    """
-    ax = axes or plt.gca()
-    ax.spines['top'].set_visible(top)
-    ax.spines['right'].set_visible(right)
-    ax.spines['left'].set_visible(left)
-    ax.spines['bottom'].set_visible(bottom)
-
-    # turn off all ticks
-    ax.yaxis.set_ticks_position('none')
-    ax.xaxis.set_ticks_position('none')
-
-    # now re-enable visibles
-    if top:
-        ax.xaxis.tick_top()
-    if bottom:
-        ax.xaxis.tick_bottom()
-    if left:
-        ax.yaxis.tick_left()
-    if right:
-        ax.yaxis.tick_right()
+# import matplotlib.pyplot as plt
+# from matplotlib import cycler
+#
+# pd.set_option('display.width', 500)
+# pd.set_option('display.max_columns', 30)
+#
+# # set some nicer defaults for matplotlib
+# from matplotlib import rcParams
+#
+# # these colors come from colorbrewer2.org. Each is an RGB triplet
+# dark2_colors = [(0.10588235294117647, 0.6196078431372549, 0.4666666666666667),
+#                 (0.8509803921568627, 0.37254901960784315, 0.00784313725490196),
+#                 (0.4588235294117647, 0.4392156862745098, 0.7019607843137254),
+#                 (0.9058823529411765, 0.1607843137254902, 0.5411764705882353),
+#                 (0.4, 0.6509803921568628, 0.11764705882352941),
+#                 (0.9019607843137255, 0.6705882352941176, 0.00784313725490196),
+#                 (0.6509803921568628, 0.4627450980392157, 0.11372549019607843),
+#                 (0.4, 0.4, 0.4)]
+#
+# rcParams['figure.figsize'] = (10, 6)
+# rcParams['figure.dpi'] = 150
+# rcParams['axes.prop_cycle'] = cycler("color", dark2_colors)
+# rcParams['lines.linewidth'] = 2
+# rcParams['axes.grid'] = False
+# rcParams['axes.facecolor'] = 'white'
+# rcParams['font.size'] = 14
+# rcParams['patch.edgecolor'] = 'none'
+#
+#
+# def remove_border(axes=None, top=False, right=False, left=True, bottom=True):
+#     """
+#     Minimize chartjunk by stripping out unnecessary plot borders and axis ticks
+#
+#     The top/right/left/bottom keywords toggle whether the corresponding plot border is drawn
+#     """
+#     ax = axes or plt.gca()
+#     ax.spines['top'].set_visible(top)
+#     ax.spines['right'].set_visible(right)
+#     ax.spines['left'].set_visible(left)
+#     ax.spines['bottom'].set_visible(bottom)
+#
+#     # turn off all ticks
+#     ax.yaxis.set_ticks_position('none')
+#     ax.xaxis.set_ticks_position('none')
+#
+#     # now re-enable visibles
+#     if top:
+#         ax.xaxis.tick_top()
+#     if bottom:
+#         ax.xaxis.tick_bottom()
+#     if left:
+#         ax.yaxis.tick_left()
+#     if right:
+#         ax.yaxis.tick_right()
 
 
 # def get_reviews(title):
@@ -160,6 +158,7 @@ def remove_border(axes=None, top=False, right=False, left=True, bottom=True):
 # # just their frequency
 
 df = pd.read_csv("Alldata.csv", sep=";", encoding="utf-8-sig").set_index(["Films", "Critic"])
+df=df[:15000]
 
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.model_selection import train_test_split
@@ -169,61 +168,98 @@ from sklearn.naive_bayes import MultinomialNB
 def make_xy(critics, vectorizer=None):
     X = critics.Critique.values
     y = [1 if x > 3 else 0 for x in critics.Note.values]
-    if vectorizer == None:
-        vectorizer = CountVectorizer(min_df=0)
-        vectorizer.fit(X)
-        x = vectorizer.transform(X)
-        x = x.toarray()
-    else:
-        x = vectorizer.transform(X)
-        x = x.toarray()
 
+    if vectorizer is None:
+        vectorizer = CountVectorizer()
+
+    x = vectorizer.fit_transform(X)
+    x = x.tocsc()
     return x, y
 
-
-X, Y = make_xy(df)
+vectorizer=CountVectorizer(min_df=0.000010)
+X, Y = make_xy(df,vectorizer)
 X_train, X_test, y_train, y_test = train_test_split(X, Y)
-clf = MultinomialNB()
+clf = MultinomialNB(alpha=1.)
 clf.fit(X_train, y_train)
-print("Accuracy test data is " + str(100 * clf.score(X_test, y_test)) + " %")
-print("Accuracy train data is " + str(100 * clf.score(X_train, y_train)) + " %")
+
+# def calibration_plot(clf, X, Y):
+#     prob = clf.predict_proba(X)[:, 1]
+#     outcome = Y
+#     data = pd.DataFrame(dict(prob=prob, outcome=outcome))
+#     # group outcomes into bins of similar probability
+#     bins = np.linspace(0, 1, 20)
+#     cuts = pd.cut(prob, bins)
+#     binwidth = bins[1] - bins[0]
+#     cal = data.groupby(cuts).outcome.agg(['mean', 'count'])
+#     cal['pmid'] = (bins[:-1] + bins[1:]) / 2
+#     cal['sig'] = np.sqrt(cal.pmid * (1 - cal.pmid) / cal['count'])
+#     ax = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
+#     p = plt.errorbar(cal.pmid, cal['mean'], cal['sig'])
+#     plt.plot(cal.pmid, cal.pmid, linestyle='--', lw=1, color='k')
+#     plt.ylabel("Empirical P(Fresh)")
+#     remove_border(ax)
+#
+#     # the distribution of P(fresh)
+#     ax = plt.subplot2grid((3, 1), (2, 0), sharex=ax)
+#
+#     plt.bar(left=cal.pmid - binwidth / 2, height=cal['count'],
+#             width=.95 * (bins[1] - bins[0]),
+#             fc=p[0].get_color())
+#
+#     plt.xlabel("Predicted P(Fresh)")
+#     remove_border()
+#     plt.ylabel("Number")
+#     plt.legend()
 
 
-def calibration_plot(clf, X, Y):
-    prob = clf.predict_proba(X)[:, 1]
-    print(prob)
-    outcome = Y
-    print(outcome)
-    data = pd.DataFrame(dict(prob=prob, outcome=outcome))
-    print(data)
-    # group outcomes into bins of similar probability
-    bins = np.linspace(0, 1, 20)
-    print(bins)
-    cuts = pd.cut(prob, bins)
-    print(cuts)
-    binwidth = bins[1] - bins[0]
-    cal = data.groupby(cuts).outcome.agg(['mean', 'count'])
-    print(cal)
-    cal['pmid'] = (bins[:-1] + bins[1:]) / 2
-    cal['sig'] = np.sqrt(cal.pmid * (1 - cal.pmid) / cal['count'])
-    ax = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
-    p = plt.errorbar(cal.pmid, cal['mean'], cal['sig'])
-    plt.plot(cal.pmid, cal.pmid, linestyle='--', lw=1, color='k')
-    plt.ylabel("Empirical P(Fresh)")
-    remove_border(ax)
-
-    # the distribution of P(fresh)
-    ax = plt.subplot2grid((3, 1), (2, 0), sharex=ax)
-
-    plt.bar(left=cal.pmid - binwidth / 2, height=cal['count'],
-            width=.95 * (bins[1] - bins[0]),
-            fc=p[0].get_color())
-
-    plt.xlabel("Predicted P(Fresh)")
-    remove_border()
-    plt.ylabel("Number")
-    plt.legend()
-    plt.show()
+words = np.array(vectorizer.get_feature_names())
+#x= np.eye(X_test.shape[1])
 
 
-calibration_plot(clf, X_test, y_test)
+
+# prob = clf.predict_log_proba(X)[:,0]
+#
+# predict = clf.predict(x)
+# ind = np.argsort(probs)
+#
+# good_words = words[ind[:10]]
+# bad_words = words[ind[-10:]]
+#
+# good_prob = probs[ind[:10]]
+# bad_prob = probs[ind[-10:]]
+#
+# print(
+# "Good words\t     P(note>3 | mot)")
+# for w, p in zip(good_words, good_prob):
+#     print(
+#     "%20s" % w, "%0.2f" % (1 - np.exp(p)))
+#
+# print(
+# "Bad words\t     P(note>3 | mot)")
+# for w, p in zip(bad_words, bad_prob):
+#     print(
+#     "%20s" % w, "%0.2f" % (1 - np.exp(p)))
+
+x, y = make_xy(df, vectorizer)
+
+prob = clf.predict_proba(x)[:, 0]
+predict = clf.predict(x)
+
+bad_rotten = np.argsort(prob[predict == 0])[:5]
+bad_fresh = np.argsort(prob[predict == 1])[-5:]
+print(bad_rotten)
+print(bad_fresh)
+df=df.reset_index()
+
+
+print ("Mis-predicted Rotten quotes")
+print ('---------------------------')
+
+for row in bad_rotten:
+    print (df[predict == 0].loc[row,"Critique"])
+
+print ("Mis-predicted fresh quotes")
+print ('---------------------------')
+for row in bad_fresh:
+    print (df[predict == 1].loc[row,"Critique"])
+    print (" ")
